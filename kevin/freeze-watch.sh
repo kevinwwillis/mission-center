@@ -16,7 +16,11 @@ mkdir -p "$OUT"
 misses=0
 captured=0
 while true; do
-  pid=$(pgrep -x missioncenter | head -1)
+  # The app process of this exact app ID (not another Mission Center build):
+  # the sandbox's child-pid is bwrap, and missioncenter is its direct child.
+  sandbox=$(flatpak ps --columns=child-pid,application | awk -v id="$APP_ID" '$2 == id {print $1; exit}')
+  pid=""
+  [ -n "$sandbox" ] && pid=$(pgrep -x missioncenter -P "$sandbox" | head -1)
   if [ -z "$pid" ]; then misses=0; captured=0; sleep 5; continue; fi
   if timeout 6 gdbus call --session --dest "$APP_ID" --object-path "$OBJ" \
        --method org.gtk.Actions.List --timeout 4 >/dev/null 2>&1; then

@@ -252,11 +252,23 @@ impl DatasetGroup {
     }
 
     pub fn add_data(&mut self, points: &Vec<f32>) {
+        self.grow_to(points.len());
+
         for (idx, set) in points.iter().enumerate() {
             self.update_single_scaling(idx, *set);
         }
 
         self.update_expensive_scaling();
+    }
+
+    fn grow_to(&mut self, sets: usize) {
+        while self.datas.len() < sets {
+            let next = match self.datas.last() {
+                Some(existing) => Dataset::empty_like(existing),
+                None => Dataset::default(),
+            };
+            self.datas.push(next);
+        }
     }
 
     pub fn reset_auto_scaling(&mut self) {
@@ -433,6 +445,11 @@ impl DatasetGroup {
             .iter()
             .map(|pts| pts.plot(width, height, &self.dataset_settings, parent))
             .collect();
+
+        // Nothing to draw (and Stacking would index an empty list).
+        if dataset_points.is_empty() {
+            return;
+        }
 
         dataset_points = match self.dataset_settings.scaling_settings {
             ScalingSettings::Stacking => {
@@ -634,6 +651,19 @@ impl Dataset {
         }
     }
 
+    fn empty_like(other: &Self) -> Self {
+        let mut data = vec![f32::NAN; other.data.len()];
+        if let Some(v) = data.first_mut() {
+            // so there's no vertical drop on the series' first frame
+            *v = 0.0
+        }
+        Self {
+            data,
+            x_points: other.x_points.clone(),
+            used_data: other.used_data,
+        }
+    }
+
     pub fn new_with_fill(v: f32) -> Self {
         let data = vec![v; MAX_POINTS as usize];
         Self {
@@ -717,6 +747,57 @@ impl Default for Dataset {
             data,
             x_points: (0..MAX_POINTS as usize).map(|x| x as f32).collect(),
             used_data: MIN_POINTS as usize,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Reproduces mission-center#542: the CPU page builds one series from an incomplete first
+    /// reading, then feeds it one point per core once the real reading arrives.
+    #[test]
+    fn add_data_grows_to_match_the_point_count() {
+        let mut group = DatasetGroup::new();
+        group.set_datasets(0);
+        assert_eq!(group.datas.len(), 1);
+
+        group.add_data(&vec![7.0; 12]);
+
+        assert_eq!(group.datas.len(), 12);
+        for set in &group.datas {
+            assert_eq!(set.get_data()[0], 7.0);
+        }
+    }
+
+    #[test]
+    fn add_data_keeps_series_it_was_given_no_point_for() {
+        let mut group = DatasetGroup::new();
+        group.set_datasets(4);
+
+        group.add_data(&vec![1.0, 2.0]);
+
+        assert_eq!(group.datas.len(), 4);
+        assert_eq!(group.datas[0].get_data()[0], 1.0);
+        assert_eq!(group.datas[1].get_data()[0], 2.0);
+        // untouched, still holding what `Dataset::default` seeded
+        assert_eq!(group.datas[2].get_data()[0], 0.0);
+        assert!(group.datas[2].get_data()[1..].iter().all(|v| v.is_nan()));
+    }
+
+    #[test]
+    fn grown_series_share_the_time_axis_of_the_original() {
+        let mut group = DatasetGroup::new();
+        group.update_data_points(42);
+
+        group.add_data(&vec![1.0; 3]);
+
+        let first = &group.datas[0];
+        for set in &group.datas[1..] {
+            assert_eq!(set.used_data, first.used_data);
+            assert_eq!(set.x_points, first.x_points);
+            assert_eq!(set.data.len(), first.data.len());
         }
     }
 }

@@ -82,7 +82,14 @@ fn flatpak_data_dir() -> &'static Path {
 
     DATA_DIR
         .get_or_init(|| {
-            let path = user_home().join(".var/app/io.missioncenter.MissionCenter/data");
+            // Use the running Flatpak's own ID so builds with another app ID
+            // (installed alongside the official one) get a socket path inside
+            // their own sandbox.
+            let app_id = std::env::var("FLATPAK_ID")
+                .ok()
+                .filter(|id| !id.is_empty())
+                .unwrap_or_else(|| "io.missioncenter.MissionCenter".to_owned());
+            let path = user_home().join(format!(".var/app/{app_id}/data"));
             std::fs::create_dir_all(&path).expect("Failed to create flatpak data directory");
             path
         })

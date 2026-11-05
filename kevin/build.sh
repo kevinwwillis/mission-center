@@ -12,6 +12,8 @@ mkdir -p "$state"
 log="$state/build.log"
 exec > >(tee -a "$log") 2>&1
 echo "=== build start $(date '+%Y-%m-%d %H:%M:%S %Z') at $(git -C "$repo" rev-parse --short HEAD)"
+# The build copies the working tree, so record anything not committed.
+git -C "$repo" status --short | sed 's/^/    uncommitted: /'
 manifest="$(python3 "$repo/kevin/make-manifest.py")"
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak-builder --user --install --force-clean --install-deps-from=flathub \

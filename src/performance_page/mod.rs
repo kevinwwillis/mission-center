@@ -967,7 +967,10 @@ mod imp {
                 .actions(gdk::DragAction::empty())
                 .build();
 
-            if self.sidebar_edit_mode.get() {
+            // Resolve the user's saved on/off setting for every device added,
+            // not only in edit mode: a device switched off that drops out and
+            // comes back must stay off.
+            let resolved = {
                 let settings = settings!();
                 let category_visible = match graph.device_type() {
                     DeviceType::Disk => settings.boolean("performance-show-disks"),
@@ -982,11 +985,10 @@ mod imp {
                 };
                 let raw_overrides = settings.string("performance-sidebar-device-overrides");
                 let overrides = parse_device_overrides(&raw_overrides);
-                let resolved = resolve_device_visibility(
-                    graph.widget_name().as_str(),
-                    &overrides,
-                    category_visible,
-                );
+                resolve_device_visibility(graph.widget_name().as_str(), &overrides, category_visible)
+            };
+
+            if self.sidebar_edit_mode.get() {
                 graph.set_edit_mode(true, resolved);
                 drag_source.set_actions(gdk::DragAction::MOVE);
             }
@@ -1012,6 +1014,12 @@ mod imp {
             self.summary_graphs.set(summary_graphs);
 
             sidebar.insert(graph, index);
+            if !self.sidebar_edit_mode.get() {
+                graph.set_switch_active(resolved);
+                if let Some(parent) = graph.parent() {
+                    parent.set_visible(resolved);
+                }
+            }
             if let Some(row) = sidebar.row_at_index(index) {
                 drag_source.connect_prepare({
                     let this = self.obj().downgrade();

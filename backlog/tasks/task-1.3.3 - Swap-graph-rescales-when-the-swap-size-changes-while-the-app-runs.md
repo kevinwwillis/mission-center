@@ -1,9 +1,10 @@
 ---
 id: TASK-1.3.3
 title: Swap graph rescales when the swap size changes while the app runs
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-05T21:20:00Z'
+updated_date: '2026-11-05T21:34:00Z'
 labels: []
 dependencies: []
 parent_task_id: TASK-1.3
@@ -18,6 +19,12 @@ Kevin, 2026-11-05 16:19 ET: Mission Center showed 100% swap use after he grew sw
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 With the app running, a swap size change shows the right percentage within one refresh
-- [ ] #2 Fresh launch still shows the right swap graph
+- [x] #1 With the app running, a swap size change shows the right percentage within one refresh
+- [x] #2 Fresh launch still shows the right swap graph
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Fixed in 4afc41d (2026-11-05 16:34 ET). Test on hidden display with our build: 64 GiB swap 57% fill; temporary 32 GB swap file added (96 GiB) -> 38%; removed -> 57%. First test run hit the old build because the earlier test copy was still running (single instance); rerun on the new build.
+<!-- SECTION:NOTES:END -->

@@ -61,7 +61,6 @@ mod gpu;
 mod gpu_details;
 mod memory;
 mod network;
-mod sidebar_order;
 mod summary_graph;
 pub mod widgets;
 
@@ -943,23 +942,6 @@ mod imp {
                 .build();
         }
 
-        /// Device names of the sidebar rows, top to bottom.
-        fn sidebar_row_names(&self) -> Vec<String> {
-            let sidebar = self.sidebar();
-            let mut names = Vec::new();
-            let mut row_index = 0;
-            while let Some(row) = sidebar.row_at_index(row_index) {
-                row_index += 1;
-                if let Some(graph) = row
-                    .child()
-                    .and_then(|child| child.downcast_ref::<SummaryGraph>().cloned())
-                {
-                    names.push(graph.widget_name().to_string());
-                }
-            }
-            names
-        }
-
         fn add_to_sidebar(&self, graph: &SummaryGraph, hint: Option<i32>) {
             let sidebar = self.sidebar();
 
@@ -992,22 +974,9 @@ mod imp {
             }
 
             let mut summary_graphs = self.summary_graphs.take();
-            let fallback = hint
+            let index = hint
                 .unwrap_or_else(|| summary_graphs.len().saturating_sub(1) as i32)
                 .max(0);
-            // A device that appears (or comes back) goes where the user's
-            // saved order puts it, not at its type's default spot.
-            let saved_raw = settings!().string("performance-sidebar-order");
-            let saved = sidebar_order::parse(saved_raw.as_str());
-            let current = self.sidebar_row_names();
-            let current: Vec<&str> = current.iter().map(|s| s.as_str()).collect();
-            let index = sidebar_order::insert_index(
-                &saved,
-                &current,
-                graph.widget_name().as_str(),
-                fallback,
-            )
-            .min(current.len() as i32);
             summary_graphs.insert(graph.clone(), drag_source.clone());
             self.summary_graphs.set(summary_graphs);
 
@@ -1100,16 +1069,36 @@ mod imp {
 
                         let settings = settings!();
 
-                        // Keep the saved places of devices that are absent
-                        // right now instead of dropping them.
-                        let current = this.sidebar_row_names();
-                        let current: Vec<&str> = current.iter().map(|s| s.as_str()).collect();
-                        let saved_raw = settings.string("performance-sidebar-order");
-                        let saved = sidebar_order::parse(saved_raw.as_str());
-                        let sidebar_order = sidebar_order::merge(&saved, &current);
+                        let sidebar = this.sidebar();
+                        let mut row_index = -1;
+                        let mut sidebar_order = String::new();
+                        loop {
+                            row_index += 1;
+                            let row = match sidebar.row_at_index(row_index) {
+                                Some(row) => row,
+                                None => break,
+                            };
+
+                            let graph = match row
+                                .child()
+                                .and_then(|child| child.downcast_ref::<SummaryGraph>().cloned())
+                            {
+                                Some(graph) => graph,
+                                None => continue,
+                            };
+
+                            sidebar_order.push_str(graph.widget_name().as_str());
+                            sidebar_order.push(';');
+                        }
+
+                        let sidebar_order = if !sidebar_order.is_empty() {
+                            &sidebar_order[..sidebar_order.len() - 1]
+                        } else {
+                            ""
+                        };
 
                         settings
-                            .set_string("performance-sidebar-order", &sidebar_order)
+                            .set_string("performance-sidebar-order", sidebar_order)
                             .unwrap_or_else(|_| {
                                 g_warning!(
                                     "MissionCenter::PerformancePage",
@@ -2005,10 +1994,12 @@ mod imp {
 
             let summary_graphs = this.summary_graphs.take();
 
-            // Count only devices that are present: names of absent devices in
-            // the saved order must not leave gaps that push rows out of place.
-            let mut i = 0i32;
-            for row_name in sidebar_order.split(';').filter(|g| !g.is_empty()) {
+            for (i, row_name) in sidebar_order
+                .split(';')
+                .filter(|g| !g.is_empty())
+                .enumerate()
+                .map(|(i, r)| (i as i32, r))
+            {
                 if let Some((row, graph)) = row_map.remove(row_name) {
                     let drag_controller = match summary_graphs.get(&graph) {
                         Some(drag_controller) => drag_controller.clone(),
@@ -2029,7 +2020,6 @@ mod imp {
                     sidebar
                         .row_at_index(i)
                         .and_then(|row| Some(row.add_controller(drag_controller)));
-                    i += 1;
                 }
             }
 

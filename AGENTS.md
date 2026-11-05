@@ -8,11 +8,9 @@ with as little work as possible (Kevin, 2026-11-05 14:24 ET).
 
 - `upstream`: the official GitLab repo. Never push there.
 - `origin`: public GitHub fork, `kevinwwillis/mission-center`.
-- `kevin` (default branch): upstream's latest release tag plus our commits on top.
-  Each fix is one commit. On a new upstream release, rebase `kevin` onto the new
-  tag, then rebuild and retest. This is the one place this repo rewrites a pushed
-  branch (`git push --force-with-lease origin kevin`); the old tip is tagged
-  `kevin-on-<upstream tag>` before the rebase so nothing is lost.
+- `kevin` (default branch): upstream's latest release plus our commits. Each fix
+  is one commit. New upstream releases are merged in, never rebased (the branch
+  is published): follow `kevin/UPDATING.md`.
 
 ## Rules
 

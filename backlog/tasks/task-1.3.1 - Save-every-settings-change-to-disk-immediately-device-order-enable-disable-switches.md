@@ -3,10 +3,10 @@ id: TASK-1.3.1
 title: >-
   Save every settings change to disk immediately (device order, enable/disable
   switches)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-05T19:26:00Z'
-updated_date: '2026-11-05T19:52:00Z'
+updated_date: '2026-11-05T20:07:00Z'
 labels: []
 dependencies: []
 parent_task_id: TASK-1.3
@@ -27,4 +27,6 @@ Kevin, 2026-11-05: 'when a user makes changes to this app, it instantly saves it
 2026-11-05 14:41 ET: Review (Claude Sonnet, high) found upstream already fixed this on main: 253d2a5 'Fix sidebar ordering and visibility' (MR !538, closes #256 #461 #539 #540); it also found my fix missed that the startup reorder re-creates rows visible (hidden state lost). I skipped the check-upstream-first step. Reverted fc93dfb and 2f86165 (afcfbb4, c2d50a8) and cherry-picked 253d2a5 as b673fe6. Not yet built or tested.
 
 2026-11-05 14:51 ET: Tested in our build on a hidden Xvfb display with Kevin's settings copied in: saved order and all hidden devices shown correctly. Switched off sdb in the UI and killed the app with SIGKILL 0.5 s later: disk-sdb:hide was already in the keyfile. Relaunch check pending (relaunch hit the TASK-1.3.2 crash).
+
+2026-11-05 15:07 ET: Verified in our build (f646066) on a hidden Xvfb display with Kevin's settings: after switching sdb off and SIGKILL 0.5 s later, the relaunch showed sdb off and the saved order intact. Test change undone in our build's keyfile afterwards.
 <!-- SECTION:NOTES:END -->

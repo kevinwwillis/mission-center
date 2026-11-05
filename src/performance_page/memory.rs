@@ -417,6 +417,12 @@ mod imp {
             );
             this.max_graph_ram.set_text(&max_ram);
 
+            // The swap size can change while the app runs (swapon/swapoff); keep the
+            // graph's scale equal to the current size, not the size seen at startup.
+            if this.swap_usage_graph.get_dataset_max_scale(0) != mem_info.swap_total as f32 {
+                this.swap_usage_graph
+                    .set_all_datasets_max_scale(mem_info.swap_total as f32);
+            }
             let swap_used = mem_info.swap_total.saturating_sub(mem_info.swap_free);
             this.swap_usage_graph
                 .add_data_point(vec![vec![swap_used as _]]);

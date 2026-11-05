@@ -1,0 +1,11 @@
+#!/bin/sh
+# Starts Mission Center under this build's own app ID and records how each run
+# ended, so a crash leaves evidence (TASK-1.3.2). Log: inside the sandbox
+# $XDG_DATA_HOME/run-exits.log = ~/.var/app/io.missioncenter.MissionCenter.Kevin/data/run-exits.log
+LOG="${XDG_DATA_HOME:-$HOME/.local/share}/run-exits.log"
+start=$(date '+%Y-%m-%d %H:%M:%S %Z')
+missioncenter --app-id "${FLATPAK_ID:-io.missioncenter.MissionCenter.Kevin}" "$@"
+rc=$?
+if [ "$rc" -gt 128 ]; then how="killed by signal $((rc - 128))"; else how="exit code $rc"; fi
+echo "start=$start end=$(date '+%Y-%m-%d %H:%M:%S %Z') $how" >> "$LOG"
+exit "$rc"
